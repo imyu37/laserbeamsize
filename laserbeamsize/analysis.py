@@ -23,7 +23,9 @@ Finding the center and diameters of a beam in a monochrome image is simple::
 """
 
 import numpy as np
-import laserbeamsize as lbs
+
+from .background import subtract_iso_background, rotated_rect_mask
+from .image_tools import rotate_image
 
 __all__ = (
     "basic_beam_size",
@@ -90,7 +92,7 @@ def basic_beam_size(original, phi_fixed=None):
     yc = np.sum(np.dot(image.T, vv)) / p
 
     if phi_fixed is not None:
-        image = lbs.rotate_image(image, xc, yc, -phi_fixed)
+        image = rotate_image(image, xc, yc, -phi_fixed)
 
     # find the variances
     hs = hh - xc
@@ -210,13 +212,13 @@ def beam_size(
     _validate_inputs(image, mask_diameters, corner_fraction, nT, max_iter, phi_fixed)
 
     # zero background for initial guess at beam size
-    image_no_bkgnd = lbs.subtract_iso_background(
+    image_no_bkgnd = subtract_iso_background(
         image, corner_fraction=corner_fraction, nT=nT, iso_noise=False
     )
     xc, yc, d_major, d_minor, phi_ = basic_beam_size(image_no_bkgnd, phi_fixed)
 
     if iso_noise:  # follow iso background guidelines (positive & negative bkgnd values)
-        image_no_bkgnd = lbs.subtract_iso_background(
+        image_no_bkgnd = subtract_iso_background(
             image, corner_fraction=corner_fraction, nT=nT, iso_noise=True
         )
 
@@ -226,7 +228,7 @@ def beam_size(
         xc2, yc2, dx2, dy2 = xc, yc, d_major, d_minor
 
         # create a mask so only values within the mask are used
-        mask = lbs.rotated_rect_mask(image, xc, yc, d_major, d_minor, phi_, mask_diameters)
+        mask = rotated_rect_mask(image, xc, yc, d_major, d_minor, phi_, mask_diameters)
         masked_image = np.copy(image_no_bkgnd)
 
         # zero values outside mask (rotation allows mask pixels to differ from 0 or 1)

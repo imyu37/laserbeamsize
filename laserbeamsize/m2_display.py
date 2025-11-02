@@ -25,7 +25,9 @@ Finding the beam waist size, location, and M² for a beam is straightforward::
 import numpy as np
 import matplotlib.gridspec
 import matplotlib.pyplot as plt
-import laserbeamsize as lbs
+
+from .m2_fit import M2_fit
+from .gaussian import beam_radius, magnification, image_distance, z_rayleigh
 
 __all__ = ("M2_diameter_plot", "M2_radius_plot", "M2_focus_plot")
 
@@ -47,7 +49,7 @@ def _fit_plot(z, d, lambda0, strict=False, z0=None, d0=None):
         z0: location of focus
         zR: Rayleigh distance for beam
     """
-    params, errors, used = lbs.M2_fit(z, d, lambda0, strict=strict, z0=z0, d0=d0)
+    params, errors, used = M2_fit(z, d, lambda0, strict=strict, z0=z0, d0=d0)
     unused = np.logical_not(used)
     d0, z0, Theta, M2, zR = params
     d0_std, z0_std, Theta_std, M2_std, zR_std = errors
@@ -249,7 +251,7 @@ def M2_radius_plot(z, d, lambda0, strict=False, z0=None, d0=None):
     Returns:
         nothing
     """
-    params, errors, used = lbs.M2_fit(z, d, lambda0, strict=strict, z0=z0, d0=d0)
+    params, errors, used = M2_fit(z, d, lambda0, strict=strict, z0=z0, d0=d0)
     unused = np.logical_not(used)
     d0, z0, Theta, M2, zR = params
     d0_std, _, Theta_std, M2_std, _ = errors
@@ -385,18 +387,18 @@ def M2_focus_plot(w0, lambda0, f, z0, M2=1):
     # plot the beam from just before the waist to the lens
     left = 1.1 * z0
     z = np.linspace(left, 0)
-    r = lbs.beam_radius(w0, lambda0, z, z0=z0, M2=M2)
+    r = beam_radius(w0, lambda0, z, z0=z0, M2=M2)
     plt.fill_between(z * 1e3, -r * 1e6, r * 1e6, color="red", alpha=0.2)
 
     # find the gaussian beam parameters for the beam after the lens
-    w0_after = w0 * lbs.magnification(w0, lambda0, z0, f, M2=M2)
-    z0_after = lbs.image_distance(w0, lambda0, z0, f, M2=M2)
-    zR_after = lbs.z_rayleigh(w0_after, lambda0, M2)
+    w0_after = w0 * magnification(w0, lambda0, z0, f, M2=M2)
+    z0_after = image_distance(w0, lambda0, z0, f, M2=M2)
+    zR_after = z_rayleigh(w0_after, lambda0, M2)
 
     # plot the beam after the lens
     right = max(2 * f, z0_after + 4 * zR_after)
     z_after = np.linspace(0, right)
-    r_after = lbs.beam_radius(w0_after, lambda0, z_after, z0=z0_after, M2=M2)
+    r_after = beam_radius(w0_after, lambda0, z_after, z0=z0_after, M2=M2)
 
     # plt.axhline(w0_after * 1.41e6)
     plt.fill_between(z_after * 1e3, -r_after * 1e6, r_after * 1e6, color="red", alpha=0.2)

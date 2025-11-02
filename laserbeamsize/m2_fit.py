@@ -38,7 +38,8 @@ To facilitate interpretation of the results, there is also a `M2_report` functio
 
 import numpy as np
 import scipy.optimize
-import laserbeamsize as lbs
+
+from .gaussian import beam_parameter_product, artificial_to_original
 
 __all__ = (
     "M2_fit",
@@ -332,7 +333,7 @@ def M2_string(params, errors):
     """
     d0, z0, Theta, M2, zR = params
     d0_std, z0_std, Theta_std, M2_std, zR_std = errors
-    BPP, BPP_std = lbs.beam_parameter_product(Theta, d0, Theta_std, d0_std)
+    BPP, BPP_std = beam_parameter_product(Theta, d0, Theta_std, d0_std)
 
     s = ""
     s += "       M^2 = %.2f ± %.2f\n" % (M2, M2_std)
@@ -374,7 +375,7 @@ def _M2_report(z, d, lambda0, f=None, strict=False, z0=None, d0=None):
 
     s = "Beam propagation parameters for the focused beam\n"
     s += M2_string(params, errors)
-    o_params, o_errors = lbs.artificial_to_original(params, errors, f)
+    o_params, o_errors = artificial_to_original(params, errors, f)
     s += "\nBeam propagation parameters for the laser beam\n"
     s += M2_string(o_params, o_errors)
     return s
@@ -424,9 +425,9 @@ def M2_report(z, d_major, lambda0, d_minor=None, f=None, strict=False, z0=None, 
     M2 = np.sqrt(M2x * M2y)
     M2_std = np.sqrt(M2x_std**2 + M2y_std**2)
 
-    BPP, BPP_std = lbs.beam_parameter_product(Theta, d0, Theta_std, d0_std)
-    BPPx, BPPx_std = lbs.beam_parameter_product(Thetax, d0x, Thetax_std, d0x_std)
-    BPPy, BPPy_std = lbs.beam_parameter_product(Thetay, d0y, Thetay_std, d0y_std)
+    BPP, BPP_std = beam_parameter_product(Theta, d0, Theta_std, d0_std)
+    BPPx, BPPx_std = beam_parameter_product(Thetax, d0x, Thetax_std, d0x_std)
+    BPPy, BPPy_std = beam_parameter_product(Thetay, d0y, Thetay_std, d0y_std)
 
     tag = ""
     if f is not None:

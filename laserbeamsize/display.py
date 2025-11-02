@@ -34,7 +34,11 @@ A mosaic of images might be created by::
 
 import numpy as np
 import matplotlib.pyplot as plt
-import laserbeamsize as lbs
+
+from .analysis import beam_size
+from .background import iso_background, subtract_iso_background
+from .image_tools import axes_arrays, crop_image_to_rect, crop_image_to_integration_rect
+from .image_tools import ellipse_arrays, rotated_rect_arrays, major_axis_arrays, minor_axis_arrays
 
 __all__ = (
     "beam_ellipticity",
@@ -87,10 +91,10 @@ def plot_beam_diagram():
     # will not appear to be orthogonal to each other!
     plt.axes().set_aspect("equal")
 
-    xp, yp = lbs.ellipse_arrays(xc, yc, d_major, d_minor, theta)
+    xp, yp = ellipse_arrays(xc, yc, d_major, d_minor, theta)
     plt.plot(xp, yp, "k", lw=2)
 
-    xp, yp = lbs.rotated_rect_arrays(xc, yc, d_major, d_minor, theta)
+    xp, yp = rotated_rect_arrays(xc, yc, d_major, d_minor, theta)
     plt.plot(xp, yp, ":b", lw=2)
 
     sint = np.sin(theta) / 2
@@ -203,7 +207,7 @@ def plot_image_and_fit(
     bs_args["corner_fraction"] = corner_fraction
 
     # find center and diameters
-    xc, yc, d_major, d_minor, phi = lbs.beam_size(o_image, **bs_args)
+    xc, yc, d_major, d_minor, phi = beam_size(o_image, **bs_args)
 
     # establish scale and correct label
     if pixel_size is None:
@@ -219,9 +223,9 @@ def plot_image_and_fit(
         ymax = yc + crop[0] / 2 / scale
         xmin = xc - crop[1] / 2 / scale
         xmax = xc + crop[1] / 2 / scale
-        image, xc, yc = lbs.crop_image_to_rect(o_image, xc, yc, xmin, xmax, ymin, ymax)
+        image, xc, yc = crop_image_to_rect(o_image, xc, yc, xmin, xmax, ymin, ymax)
     elif crop:
-        image, xc, yc = lbs.crop_image_to_integration_rect(o_image, xc, yc, d_major, d_minor, phi)
+        image, xc, yc = crop_image_to_integration_rect(o_image, xc, yc, d_major, d_minor, phi)
     else:
         image = o_image
 
@@ -241,15 +245,15 @@ def plot_image_and_fit(
     plt.ylabel(label)
 
     # draw major and minor axes
-    xp, yp = lbs.axes_arrays(xc, yc, d_major, d_minor, phi)
+    xp, yp = axes_arrays(xc, yc, d_major, d_minor, phi)
     plot_visible_dotted_line((xp - xc) * scale, (yp - yc) * scale)
 
     # show ellipse around beam
-    xp, yp = lbs.ellipse_arrays(xc, yc, d_major, d_minor, phi)
+    xp, yp = ellipse_arrays(xc, yc, d_major, d_minor, phi)
     plot_visible_dotted_line((xp - xc) * scale, (yp - yc) * scale)
 
     # show integration area around beam
-    xp, yp = lbs.rotated_rect_arrays(xc, yc, d_major, d_minor, phi)
+    xp, yp = rotated_rect_arrays(xc, yc, d_major, d_minor, phi)
     plot_visible_dotted_line((xp - xc) * scale, (yp - yc) * scale)
 
     # set limits on axes
@@ -313,7 +317,7 @@ def plot_image_analysis(
     bs_args["corner_fraction"] = corner_fraction
 
     # find center and diameters
-    xc, yc, d_major, d_minor, phi = lbs.beam_size(o_image, **bs_args)
+    xc, yc, d_major, d_minor, phi = beam_size(o_image, **bs_args)
 
     # determine scaling and labels
     if pixel_size is None:
@@ -332,17 +336,17 @@ def plot_image_analysis(
         ymax = yc + crop[0] / 2 / scale
         xmin = xc - crop[1] / 2 / scale
         xmax = xc + crop[1] / 2 / scale
-        image, xc, yc = lbs.crop_image_to_rect(o_image, xc, yc, xmin, xmax, ymin, ymax)
+        image, xc, yc = crop_image_to_rect(o_image, xc, yc, xmin, xmax, ymin, ymax)
     elif crop:
-        image, xc, yc = lbs.crop_image_to_integration_rect(o_image, xc, yc, d_major, d_minor, phi)
+        image, xc, yc = crop_image_to_integration_rect(o_image, xc, yc, d_major, d_minor, phi)
     else:
         image = o_image
 
     # subtract background
-    working_image = lbs.subtract_iso_background(
+    working_image = subtract_iso_background(
         image, corner_fraction=corner_fraction, nT=nT, iso_noise=iso_noise
     )
-    bkgnd, _ = lbs.iso_background(image, corner_fraction=corner_fraction, nT=nT)
+    bkgnd, _ = iso_background(image, corner_fraction=corner_fraction, nT=nT)
 
     min_ = image.min()
     max_ = image.max()
@@ -378,13 +382,13 @@ def plot_image_analysis(
     plt.subplot(2, 2, 2)
     extent = np.array([-xc_s, h_s - xc_s, v_s - yc_s, -yc_s])
     im = plt.imshow(working_image, extent=extent, cmap=cmap)
-    xp, yp = lbs.ellipse_arrays(xc, yc, d_major, d_minor, phi) * scale
+    xp, yp = ellipse_arrays(xc, yc, d_major, d_minor, phi) * scale
     plot_visible_dotted_line(xp - xc_s, yp - yc_s)
 
-    xp, yp = lbs.axes_arrays(xc, yc, d_major, d_minor, phi) * scale
+    xp, yp = axes_arrays(xc, yc, d_major, d_minor, phi) * scale
     plot_visible_dotted_line(xp - xc_s, yp - yc_s)
 
-    xp, yp = lbs.rotated_rect_arrays(xc, yc, d_major, d_minor, phi) * scale
+    xp, yp = rotated_rect_arrays(xc, yc, d_major, d_minor, phi) * scale
     plot_visible_dotted_line(xp - xc_s, yp - yc_s)
 
     plt.colorbar(im, fraction=0.046 * v_s / h_s, pad=0.04)
@@ -396,10 +400,10 @@ def plot_image_analysis(
     plt.title("Image w/o background, center at (%.0f, %.0f) %s" % (xc_s, yc_s, units))
 
     # calculate gaussian fit
-    _, _, z_major, s_major = lbs.major_axis_arrays(image, xc, yc, d_major, d_minor, phi)
+    _, _, z_major, s_major = major_axis_arrays(image, xc, yc, d_major, d_minor, phi)
     a_major = np.sqrt(2 / np.pi) / r_major * abs(np.sum(z_major - bkgnd) * (s_major[1] - s_major[0]))
 
-    _, _, z_minor, s_minor = lbs.minor_axis_arrays(image, xc, yc, d_major, d_minor, phi)
+    _, _, z_minor, s_minor = minor_axis_arrays(image, xc, yc, d_major, d_minor, phi)
     a_minor = np.sqrt(2 / np.pi) / r_minor * abs(np.sum(z_minor - bkgnd) * (s_minor[1] - s_minor[0]))
 
     # plot of values along major axis
