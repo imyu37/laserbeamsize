@@ -212,9 +212,7 @@ def beam_size(
     _validate_inputs(image, mask_diameters, corner_fraction, nT, max_iter, phi_fixed)
 
     # zero background for initial guess at beam size
-    image_no_bkgnd = subtract_iso_background(
-        image, corner_fraction=corner_fraction, nT=nT, iso_noise=False
-    )
+    image_no_bkgnd = subtract_iso_background(image, corner_fraction=corner_fraction, nT=nT, iso_noise=False)
     xc, yc, d_major, d_minor, phi_ = basic_beam_size(image_no_bkgnd, phi_fixed)
 
     if iso_noise:  # follow iso background guidelines (positive & negative bkgnd values)
