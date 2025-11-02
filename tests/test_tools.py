@@ -1,30 +1,37 @@
 """Tests for functions in image_tools.py."""
 
 import numpy as np
-import laserbeamsize as lbs
 
+from laserbeamsize.image_tools import (
+    rotate_image,
+    rotate_points,
+    values_along_line,
+    major_axis_arrays,
+    minor_axis_arrays,
+    create_test_image,
+)
 
 # rotate_points
 def test_rotate_points_0_degrees():
-    x, y = lbs.image_tools.rotate_points(1, 0, 0, 0, 0)
+    x, y = rotate_points(1, 0, 0, 0, 0)
     assert np.isclose(x, 1, atol=1e-8)
     assert np.isclose(y, 0, atol=1e-8)
 
 
 def test_rotate_points_90_degrees():
-    x, y = lbs.image_tools.rotate_points(1, 0, 0, 0, np.pi / 2)
+    x, y = rotate_points(1, 0, 0, 0, np.pi / 2)
     assert np.isclose(x, 0, atol=1e-8)
     assert np.isclose(y, -1, atol=1e-8)
 
 
 def test_rotate_points_180_degrees():
-    x, y = lbs.image_tools.rotate_points(1, 0, 0, 0, np.pi)
+    x, y = rotate_points(1, 0, 0, 0, np.pi)
     assert np.isclose(x, -1, atol=1e-8)
     assert np.isclose(y, 0, atol=1e-8)
 
 
 def test_rotate_points_360_degrees():
-    x, y = lbs.image_tools.rotate_points(1, 0, 0, 0, 2 * np.pi)
+    x, y = rotate_points(1, 0, 0, 0, 2 * np.pi)
     assert np.isclose(x, 1, atol=1e-8)
     assert np.isclose(y, 0, atol=1e-8)
 
@@ -32,7 +39,7 @@ def test_rotate_points_360_degrees():
 # values_along_line
 def test_values_along_line():
     image = np.array([[0, 1], [2, 3]])
-    x, y, z, s = lbs.image_tools.values_along_line(image, 0, 0, 1, 1)
+    x, y, z, s = values_along_line(image, 0, 0, 1, 1)
     assert np.all(x == np.array([0, 1]))
     assert np.all(y == np.array([0, 1]))
     assert np.all(z == np.array([0, 3]))
@@ -41,7 +48,7 @@ def test_values_along_line():
 
 def test_values_along_line_vertical():
     image = np.array([[0, 1], [2, 3], [4, 5], [6, 7]])
-    x, y, z, s = lbs.image_tools.values_along_line(image, 0, 0, 0, 3)
+    x, y, z, s = values_along_line(image, 0, 0, 0, 3)
     assert np.all(x == np.array([0, 0, 0, 0]))
     assert np.all(y == np.array([0, 1, 2, 3]))
     assert np.all(z == np.array([0, 2, 4, 6]))
@@ -50,7 +57,7 @@ def test_values_along_line_vertical():
 
 def test_values_along_line_horizontal():
     image = np.array([[0, 1, 2, 3], [4, 5, 6, 7]])
-    x, y, z, s = lbs.image_tools.values_along_line(image, 0, 0, 3, 0)
+    x, y, z, s = values_along_line(image, 0, 0, 3, 0)
     assert np.all(x == np.array([0, 1, 2, 3]))
     assert np.all(y == np.array([0, 0, 0, 0]))
     assert np.all(z == np.array([0, 1, 2, 3]))
@@ -59,7 +66,7 @@ def test_values_along_line_horizontal():
 
 def test_values_along_line_diagonal_small():
     image = np.array([[0, 1], [2, 3]])
-    x, y, z, s = lbs.image_tools.values_along_line(image, 0, 0, 1, 1)
+    x, y, z, s = values_along_line(image, 0, 0, 1, 1)
     assert np.all(x == np.array([0, 1]))
     assert np.all(y == np.array([0, 1]))
     assert np.all(z == np.array([0, 3]))
@@ -69,7 +76,7 @@ def test_values_along_line_diagonal_small():
 # major_axis_arrays
 def test_major_axis_arrays_horizontal_major():
     image = np.ones((5, 5))
-    x, y, z, s = lbs.major_axis_arrays(image, 2, 2, 4, 3, 0)
+    x, y, z, s = major_axis_arrays(image, 2, 2, 4, 3, 0)
     assert np.all(y == 2)
     assert np.all(z == 1)
     assert np.isclose(x[0], 0)
@@ -80,7 +87,7 @@ def test_major_axis_arrays_horizontal_major():
 
 def test_major_axis_arrays_vertical_major():
     image = np.ones((5, 5))
-    x, y, z, s = lbs.major_axis_arrays(image, 2, 2, 3, 4, -np.pi / 2)
+    x, y, z, s = major_axis_arrays(image, 2, 2, 3, 4, -np.pi / 2)
     assert np.all(x == 2)
     assert np.all(z == 1)
     assert np.isclose(y[0], 0)
@@ -91,7 +98,7 @@ def test_major_axis_arrays_vertical_major():
 
 def test_major_axis_arrays_large_diameter():
     image = np.ones((5, 5))
-    x, y, z, s = lbs.major_axis_arrays(image, 2, 2, 10, 2, 0)
+    x, y, z, s = major_axis_arrays(image, 2, 2, 10, 2, 0)
     assert np.all(y == 2)
     assert np.all(z == 1)
     assert np.isclose(x[0], 0)
@@ -102,7 +109,7 @@ def test_major_axis_arrays_large_diameter():
 
 def test_major_axis_arrays_rotated():
     image = np.ones((7, 7))
-    x, y, z, s = lbs.major_axis_arrays(image, 3, 3, 3, 2, np.pi / 4)
+    x, y, z, s = major_axis_arrays(image, 3, 3, 3, 2, np.pi / 4)
     assert np.all(z == 1)
     assert np.isclose(x[0], 1)
     assert np.isclose(x[-1], 5)
@@ -115,7 +122,7 @@ def test_major_axis_arrays_rotated():
 # minor_axis_arrays
 def test_minor_axis_arrays_horizontal():
     image = np.ones((5, 5))
-    x, y, z, s = lbs.minor_axis_arrays(image, 2, 2, 4, 3, 0)
+    x, y, z, s = minor_axis_arrays(image, 2, 2, 4, 3, 0)
     assert np.all(x == 2)
     assert np.all(z == 1)
     assert np.isclose(y[0], 0)
@@ -126,7 +133,7 @@ def test_minor_axis_arrays_horizontal():
 
 def test_minor_axis_arrays_vertical():
     image = np.ones((5, 5))
-    x, y, z, s = lbs.minor_axis_arrays(image, 2, 2, 3, 4, -np.pi / 2)
+    x, y, z, s = minor_axis_arrays(image, 2, 2, 3, 4, -np.pi / 2)
     assert np.all(y == 2)
     assert np.all(z == 1)
     assert np.isclose(x[0], 0)
@@ -137,7 +144,7 @@ def test_minor_axis_arrays_vertical():
 
 def test_minor_axis_arrays_large_diameter():
     image = np.ones((5, 5))
-    x, y, z, s = lbs.minor_axis_arrays(image, 2, 2, 10, 2, 0)
+    x, y, z, s = minor_axis_arrays(image, 2, 2, 10, 2, 0)
     assert np.all(x == 2)
     assert np.all(z == 1)
     assert np.isclose(y[0], 0)
@@ -148,7 +155,7 @@ def test_minor_axis_arrays_large_diameter():
 
 def test_minor_axis_arrays_rotated():
     image = np.ones((5, 5))
-    x, y, z, s = lbs.minor_axis_arrays(image, 2, 2, 10, 2, np.pi / 4)
+    x, y, z, _ = minor_axis_arrays(image, 2, 2, 10, 2, np.pi / 4)
     assert np.all(z == 1)
     assert np.isclose(x[0], 0)
     assert np.isclose(x[-1], 4)
@@ -159,45 +166,45 @@ def test_minor_axis_arrays_rotated():
 # rotate_image
 def test_no_rotation():
     original = np.array([[255, 0, 0], [0, 255, 0], [0, 0, 255]], dtype=np.uint8)
-    result = lbs.rotate_image(original, 1, 1, 0)
+    result = rotate_image(original, 1, 1, 0)
     assert np.array_equal(original, result)
 
 
 def test_full_rotation():
     original = np.array([[255, 0, 0], [0, 255, 0], [0, 0, 255]], dtype=np.uint8)
-    result = lbs.rotate_image(original, 1, 1, 2 * np.pi)
+    result = rotate_image(original, 1, 1, 2 * np.pi)
     assert np.array_equal(original, result)
 
 
 def test_half_rotation():
     original = np.array([[200, 0, 0], [0, 255, 0], [0, 0, 255]], dtype=np.uint8)
     expected = np.array([[255, 0, 0], [0, 255, 0], [0, 0, 200]], dtype=np.uint8)
-    result = lbs.rotate_image(original, 1, 1, np.pi)
+    result = rotate_image(original, 1, 1, np.pi)
     assert np.array_equal(expected, result)
 
 
 def test_quarter_rotation():
     original = np.array([[255, 0, 0], [0, 255, 0], [0, 0, 255]], dtype=np.uint8)
     expected = np.array([[0, 0, 255], [0, 255, 0], [255, 0, 0]], dtype=np.uint8)
-    result = lbs.rotate_image(original, 1, 1, np.pi / 2)
+    result = rotate_image(original, 1, 1, np.pi / 2)
     assert np.array_equal(expected, result)
 
 
 def test_rotate_and_crop():
     original = np.array([[255, 0, 0], [0, 255, 0], [0, 0, 255]], dtype=np.uint8)
-    result = lbs.rotate_image(original, 1, 1, np.pi / 4)
+    result = rotate_image(original, 1, 1, np.pi / 4)
     assert original.shape == result.shape
 
 
 # create test image
 def test_create_test_image_dimensions():
-    img = lbs.create_test_image(10, 10, 5, 5, 5, 5, 0)
+    img = create_test_image(10, 10, 5, 5, 5, 5, 0)
     assert img.shape == (10, 10), f"Expected (10, 10), but got {img.shape}"
 
 
 def test_invalid_max_value():
     try:
-        lbs.create_test_image(10, 10, 5, 5, 5, 5, 0, max_value=66000)
+        create_test_image(10, 10, 5, 5, 5, 5, 0, max_value=66000)
         assert False, "Expected ValueError but got none"
     except ValueError:
         pass
@@ -205,7 +212,7 @@ def test_invalid_max_value():
 
 def test_invalid_h():
     try:
-        lbs.create_test_image(-10, 10, 5, 5, 5, 5, 0)
+        create_test_image(-10, 10, 5, 5, 5, 5, 0)
         assert False, "Expected ValueError but got none"
     except ValueError:
         pass
@@ -213,7 +220,7 @@ def test_invalid_h():
 
 def test_invalid_v():
     try:
-        lbs.create_test_image(10, 0, 5, 5, 5, 5, 0)
+        create_test_image(10, 0, 5, 5, 5, 5, 0)
         assert False, "Expected ValueError but got none"
     except ValueError:
         pass
@@ -221,23 +228,23 @@ def test_invalid_v():
 
 def test_invalid_phi():
     try:
-        lbs.create_test_image(10, 10, 5, 5, 5, 5, 10 * np.pi)
+        create_test_image(10, 10, 5, 5, 5, 5, 10 * np.pi)
         assert False, "Expected ValueError but got none"
     except ValueError:
         pass
 
 
 def test_noise_addition():
-    img = lbs.create_test_image(10, 10, 5, 5, 5, 5, 0, noise=10)
-    without_noise = lbs.create_test_image(10, 10, 5, 5, 5, 5, 0, noise=0)
+    img = create_test_image(10, 10, 5, 5, 5, 5, 0, noise=10)
+    without_noise = create_test_image(10, 10, 5, 5, 5, 5, 0, noise=0)
     assert not np.array_equal(img, without_noise), "Noise not added properly"
 
 
 def test_dtype_returned():
-    img = lbs.create_test_image(10, 10, 5, 5, 5, 5, 0, max_value=255)
+    img = create_test_image(10, 10, 5, 5, 5, 5, 0, max_value=255)
     assert img.dtype == np.uint8, f"Expected dtype uint8 but got {img.dtype}"
 
-    img = lbs.create_test_image(10, 10, 5, 5, 5, 5, 0, max_value=65534)
+    img = create_test_image(10, 10, 5, 5, 5, 5, 0, max_value=65534)
     assert img.dtype == np.uint16, f"Expected dtype uint16 but got {img.dtype}"
 
 

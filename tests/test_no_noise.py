@@ -6,9 +6,7 @@ import laserbeamsize as lbs
 
 interactive = False
 
-h, v = 400, 400  # Image dimensions
-xc, yc, dx, dy, phi = 200, 200, 100, 50, 0
-image = lbs.image_tools.create_test_image(h, v, xc, yc, dx, dy, phi)
+image = lbs.image_tools.create_test_image(400, 400, 200, 200, 100, 50, 0)
 
 
 def test_mask_diameters():
@@ -80,16 +78,16 @@ def test_phi_values():
         pass
 
 
-def wrap_phi(phi):
+def wrap_phi(angle):
     # Wrap to (-π/2, π/2]
-    phi = (phi + np.pi) % (2 * np.pi) - np.pi
+    angle = (angle + np.pi) % (2 * np.pi) - np.pi
 
-    if phi <= -np.pi / 2:
-        phi += np.pi
-    elif phi > np.pi / 2:
-        phi -= np.pi
+    if angle <= -np.pi / 2:
+        angle += np.pi
+    elif angle > np.pi / 2:
+        angle -= np.pi
 
-    return phi
+    return angle
 
 
 def run_test(h, v, xc, yc, dx, dy, phi, max_value=255):
@@ -108,9 +106,7 @@ def run_test(h, v, xc, yc, dx, dy, phi, max_value=255):
         plt.show()
 
     if dy > dx:
-        dd = dx
-        dx = dy
-        dy = dd
+        dx, dy = dy, dx
         result_phi = wrap_phi(result_phi + np.pi / 2)
 
     rp = np.degrees(result_phi)

@@ -127,7 +127,7 @@ def test_perimeter_mask_non_square():
 
 # rotated_rect_mask_slow()
 def test_rotated_rect_mask_slow():
-    mask = lbs.masks.rotated_rect_mask_slow(image, 50, 50, 40, 20, np.pi / 4)
+    mask = lbs.background.rotated_rect_mask_slow(image, 50, 50, 40, 20, np.pi / 4)
     assert mask.shape == image.shape, "Mask shape mismatch"
 
 
