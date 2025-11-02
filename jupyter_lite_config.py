@@ -10,8 +10,6 @@ extensions (such as the Pyodide kernel) are included in the static site build.
 """
 
 import os
-from traitlets.config import Config
-c: Config  # type: ignore[name-defined]
 
 venv_base = os.path.join(os.getcwd(), ".venv")
 labext_path = os.path.join(venv_base, "share/jupyter/labextensions")
