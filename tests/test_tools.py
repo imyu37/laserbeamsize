@@ -11,6 +11,7 @@ from laserbeamsize.image_tools import (
     create_test_image,
 )
 
+
 # rotate_points
 def test_rotate_points_0_degrees():
     x, y = rotate_points(1, 0, 0, 0, 0)
