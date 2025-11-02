@@ -259,6 +259,7 @@ def iso_background_mask(image, corner_fraction=0.035, nT=3):
 
     return background_mask
 
+
 def subtract_background_image(original, background):
     """
     Subtract a background image from the image with beam.
