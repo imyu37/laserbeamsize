@@ -2,6 +2,7 @@
 *.pyc
 .tox
 .eggs
+.jupyterlite.doit.db
 .venv/
 .virtual_documents
 dist
@@ -11,5 +12,4 @@ docs/.ipynb_checkpoints
 docs/_build
 docs/api
 todo
-lite/_output/
-lite/wheels/
+lite/
