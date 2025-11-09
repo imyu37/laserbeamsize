@@ -1,21 +1,24 @@
+# --- MANIFEST.in (clean, minimal) ---
+
+# Keep core, readable metadata
 include README.rst
-include LICENSE.txt
 include CHANGELOG.rst
+include LICENSE.txt
 include CITATION.cff
 include pyproject.toml
-include setup.py
-include jupyter-lite.json
-include jupyter_lite_config.py
 
 # Include the actual package
 recursive-include laserbeamsize *.py
 
-# and tests
-recursive-include tests *.py
-
 # stuff we don't want to include in package
+prune tests
 prune docs
 prune .github
+global-exclude __pycache__ *.py[cod] *.so *.dylib .DS_Store ._* *.swp *.swo
+
+# If you don't want JupyterLite config in your sdist, exclude these:
+exclude jupyter-lite.json
+exclude jupyter_lite_config.py
 exclude requirements-dev.txt
 exclude setup.sh
 exclude .gitignore
@@ -23,4 +26,3 @@ exclude .readthedocs.yaml
 exclude .yamllint
 exclude Makefile
 exclude release.txt
-
