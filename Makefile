@@ -178,11 +178,17 @@ lite: $(VENV)/.ready
 	@echo ">> Clearing doit cache (if present)"
 	@/bin/rm -f "$(DOIT_DB)"
 
-	@echo ">> Staging notebooks from docs/ (excluding readme_images.ipynb) -> $(STAGE_DIR)"
+	@echo ">> Staging notebooks from docs -> $(STAGE_DIR)"
 	@/bin/rm -rf "$(STAGE_DIR)"; mkdir -p "$(STAGE_DIR)"
 	@/bin/cp docs/*.ipynb "$(STAGE_DIR)"
+	@mkdir -p "$(STAGE_DIR)/images"
+	@/bin/cp docs/images/*.png "$(STAGE_DIR)/images/"
+	@/bin/cp docs/images/*.pgm "$(STAGE_DIR)/images/"
+	@/bin/cp docs/images/*.tif "$(STAGE_DIR)/images/"
 
-	# prepare a clean lite_dir with only the configs we intend to merge
+	@echo ">> Clearing outputs from staged notebooks"
+	@"$(PYTHON)" -m jupyter nbconvert --clear-output --inplace "$(STAGE_DIR)"/*.ipynb
+
 	@echo ">> Preparing pristine lite_dir at .lite_root"
 	@/bin/rm -rf ".lite_root"; mkdir -p ".lite_root/lab"
 	@/bin/cp -f "$(ROOT)/jupyter-lite.json" ".lite_root/jupyter-lite.json" || true
