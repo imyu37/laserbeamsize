@@ -26,8 +26,8 @@
    :target: https://laserbeamsize.readthedocs.io
    :alt: docs
 
-.. |downloads-badge| image:: https://img.shields.io/pypi/dm/laserbeamsize?color=68CA66
-   :target: https://pypi.org/project/laserbeamsize/
+.. |downloads-badge| image:: https://static.pepy.tech/badge/laserbeamsize/month?color=68CA66
+   :target: https://pepy.tech/project/laserbeamsize
    :alt: Downloads
 
 .. |black-badge| image:: https://img.shields.io/badge/code%20style-black-000000.svg
@@ -82,7 +82,7 @@ Finding the center and dimensions of a good beam image::
     import imageio.v3 as iio
     import laserbeamsize as lbs
     
-    file = "https://github.com/scottprahl/laserbeamsize/raw/main/docs/t-hene.pgm"
+    file = "https://github.com/scottprahl/laserbeamsize/raw/main/docs/images/t-hene.pgm"
     beam = iio.imread(file)
     
     x, y, d_major, d_minor, phi = lbs.beam_size(beam)
