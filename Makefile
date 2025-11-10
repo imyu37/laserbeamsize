@@ -210,11 +210,57 @@ lite-fetch-pyodide:
 	curl -L -s -o "$$FILE" "$$URL" || { echo "❌ curl download failed"; exit 1; }
 	@echo "✅ pyodide.js downloaded successfully"
 
-PHONY: lite-verify-pyodide
+.PHONY: lite-verify-pyodide
 lite-verify-pyodide:
 	@test -f "$(OUT_DIR)/pyodide/pyodide.js" || { echo "❌ pyodide.js missing"; exit 1; }
 	@echo "✅ pyodide.js present at $(OUT_DIR)/pyodide/pyodide.js"
-	
+
+# 1) Write a minimal kernelspec so the Python kernel appears in the menu
+.PHONY: lite-synth-kernelspec
+lite-synth-kernelspec:
+	@echo ">> Synthesizing kernelspec at $(OUT_DIR)/api/kernelspecs/python/kernel.json"
+	@mkdir -p "$(OUT_DIR)/api/kernelspecs/python"
+	@printf '{\n'                                       >  "$(OUT_DIR)/api/kernelspecs/python/kernel.json"
+	@printf '  "display_name": "Python (Pyodide)",\n' >> "$(OUT_DIR)/api/kernelspecs/python/kernel.json"
+	@printf '  "language": "python",\n'               >> "$(OUT_DIR)/api/kernelspecs/python/kernel.json"
+	@printf '  "argv": []\n'                          >> "$(OUT_DIR)/api/kernelspecs/python/kernel.json"
+	@printf '}\n'                                     >> "$(OUT_DIR)/api/kernelspecs/python/kernel.json"
+	@touch "$(OUT_DIR)/.nojekyll"
+	@echo "✅ kernelspec written"
+
+# 2) Verify both pieces the static site needs are present
+.PHONY: lite-verify-kernel
+lite-verify-kernel:
+	@echo ">> Verifying static kernel assets"
+	@test -f "$(OUT_DIR)/pyodide/pyodide.js" || { echo "❌ Missing $(OUT_DIR)/pyodide/pyodide.js"; exit 1; }
+	@test -f "$(OUT_DIR)/api/kernelspecs/python/kernel.json" || { echo "❌ Missing kernelspec"; exit 1; }
+	@echo "✅ kernel assets ready"
+
+.PHONY: lite-copy-kernelspecs
+lite-copy-kernelspecs:
+	@echo ">> Copying pyodide kernelspecs into $(OUT_DIR)/api/kernelspecs"
+	@mkdir -p "$(OUT_DIR)/api/kernelspecs"
+	@KJSON="$$(find .venv/lib/python*/site-packages \
+	    -type f -name kernel.json -path '*kernelspec*' -print -quit 2>/dev/null)"; \
+	if [ -z "$$KJSON" ]; then \
+	  echo "❌ kernelspec kernel.json not found under .venv/lib/python*/site-packages"; \
+	  echo "   (Install the kernel: .venv/bin/python -m pip install jupyterlite-pyodide-kernel)"; \
+	  exit 1; \
+	fi; \
+	KSRC="$$(cd "$$(dirname "$$KJSON")/.." && pwd)"; \
+	echo "   Found: $$KSRC"; \
+	rsync -a "$$KSRC/" "$(OUT_DIR)/api/kernelspecs/"; \
+	touch "$(OUT_DIR)/.nojekyll"; \
+	echo "✅ kernelspecs -> $(OUT_DIR)/api/kernelspecs"
+
+.PHONY: lite-verify-kernelspecs
+lite-verify-kernelspecs:
+	@echo ">> Verifying kernelspecs in $(OUT_DIR)/api/kernelspecs"
+	@test -d "$(OUT_DIR)/api/kernelspecs" || { echo "❌ missing directory"; exit 1; }
+	@find "$(OUT_DIR)/api/kernelspecs" -type f -name kernel.json -print -quit | grep -q . \
+	  || { echo "❌ no kernel.json found under api/kernelspecs"; exit 1; }
+	@echo "✅ kernelspecs present"
+
 .PHONY: lite-serve
 lite-serve:
 	[ -d $(OUT_ROOT) ] || { echo "❌ run 'make lite' first"; exit 1; }
