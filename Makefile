@@ -101,14 +101,9 @@ lite-deploy:
 
 	@echo ">> Prune stale worktrees and (re)add $(WORKTREE)"
 	@git worktree prune || true
-	@if [ ! -d "$(WORKTREE)/.git" ]; then \
-	  rm -rf "$(WORKTREE)"; \
-	  git worktree add -f --checkout "$(WORKTREE)" "$(PAGES_BRANCH)"; \
-	else \
-	  git -C "$(WORKTREE)" fetch "$(REMOTE)" "$(PAGES_BRANCH)" || true; \
-	  git -C "$(WORKTREE)" checkout "$(PAGES_BRANCH)"; \
-	  git -C "$(WORKTREE)" reset --hard "$(REMOTE)/$(PAGES_BRANCH)" || true; \
-	fi
+	@rm -rf "$(WORKTREE)"
+	@git worktree add "$(WORKTREE)" "$(PAGES_BRANCH)"
+	@git -C "$(WORKTREE)" reset --hard "$(REMOTE)/$(PAGES_BRANCH)" 2>/dev/null || true
 
 	@echo ">> Sync $(OUT_DIR) -> $(WORKTREE)"
 	rsync -a --delete --exclude ".git/" --exclude ".gitignore" "$(OUT_DIR)/" "$(WORKTREE)/"
