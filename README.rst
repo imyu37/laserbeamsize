@@ -10,10 +10,10 @@
    :target: https://github.com/conda-forge/laserbeamsize-feedstock
    :alt: conda
 
-.. |zenodo-badge| image:: https://zenodo.org/badge/107437651.svg
+.. |zenodo-badge| image:: https://img.shields.io/badge/DOI-10.5281/zenodo.107437651-68CA66.svg
    :target: https://zenodo.org/badge/latestdoi/107437651
    :alt: zenodo
-
+   
 .. |license-badge| image:: https://img.shields.io/github/license/scottprahl/laserbeamsize?color=68CA66
    :target: https://github.com/scottprahl/laserbeamsize/blob/main/LICENSE.txt
    :alt: License
@@ -23,8 +23,8 @@
    :alt: testing
 
 .. |docs-badge| image:: https://readthedocs.org/projects/laserbeamsize/badge?color=68CA66
-  :target: https://laserbeamsize.readthedocs.io
-  :alt: docs
+   :target: https://laserbeamsize.readthedocs.io
+   :alt: docs
 
 .. |downloads-badge| image:: https://img.shields.io/pypi/dm/laserbeamsize?color=68CA66
    :target: https://pypi.org/project/laserbeamsize/
