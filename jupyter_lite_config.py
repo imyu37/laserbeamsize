@@ -11,12 +11,9 @@ extensions (such as the Pyodide kernel) are included in the static site build.
 
 import os
 
+c = get_config()  # noqa: F821
+c.LiteBuildApp.apps = ["lab"]
+
 venv_base = os.path.join(os.getcwd(), ".venv")
 labext_path = os.path.join(venv_base, "share/jupyter/labextensions")
-
-c.LiteBuildApp.apps = ["lab"]
-c.LiteBuildApp.contents = ["docs"]
-c.LiteBuildApp.output_dir = "lite"
-
-# Use the CORRECT config option name
 c.FederatedExtensionAddon.extra_labextensions_path = [labext_path]

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>laserbeamsize — JupyterLite</title>
+
+    <!-- JupyterLite expects this config blob on the landing page -->
+    <script id="jupyter-config-data" type="application/json">
+    {
+      "jupyter-lite-schema-version": 0,
+      "jupyter-config-data": {
+        "appName": "JupyterLite",
+        "appUrl": "./lab",
+        "baseUrl": "/laserbeamsize/",
+        "defaultKernelName": "python"
+      }
+    }
+    </script>
+
+    <!-- Keep the instant redirect -->
+    <meta http-equiv="refresh" content="0; url=./lab/index.html" />
+    <script>
+      var target = "./lab/index.html" + location.search + location.hash;
+      try { location.replace(target); } catch (_) { location.href = target; }
+    </script>
+  </head>
+  <body></body>
+</html>

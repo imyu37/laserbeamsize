@@ -5,20 +5,30 @@ PY_VERSION      ?= 3.11
 VENV            ?= .venv
 PY              := /opt/homebrew/opt/python@$(PY_VERSION)/bin/python$(PY_VERSION)
 PYTHON          := $(VENV)/bin/python
+SERVE_PY        := $(abspath $(PYTHON))
 PIP             := $(VENV)/bin/pip
-REQUIREMENTS    ?= requirements-dev.txt
+REQUIREMENTS    := requirements-dev.txt
 
-REPO            := scottprahl/laserbeamsize
-SITE_BASE_URL   := /laserbeamsize/
+PROJECT         := laserbeamsize
+REPO            := scottprahl/$(PROJECT)
 BUILD_APPS      := lab
 DOCS_DIR        := docs
-LITE_DIR        := lite
 HTML_DIR        := $(DOCS_DIR)/_build/html
-DOIT_DB         := .jupyterlite.doit.db
 
-BASE_URL        := /lite/laserbeamsize/
-HOST            := 127.0.0.1
-PORT            := 8000
+ROOT            := $(abspath .)
+OUT_ROOT        := $(ROOT)/_site
+OUT_DIR         := $(OUT_ROOT)/$(PROJECT)
+STAGE_DIR       := $(ROOT)/.lite_src
+DOIT_DB         := $(ROOT)/.jupyterlite.doit.db
+
+# --- GitHub Pages deploy config ---
+PAGES_BRANCH    := gh-pages
+WORKTREE        := .gh-pages
+REMOTE          := origin
+
+# --- server config (override on CLI if needed) ---
+HOST            ?= 127.0.0.1
+PORT            ?= 8000
 
 PYTEST          := $(VENV)/bin/pytest
 PYLINT          := $(VENV)/bin/pylint
@@ -73,8 +83,8 @@ help:
 	@echo "  pyroma-check   - Validate overall packaging"
 	@echo "JupyterLite Targets:"
 	@echo "  run            - Clean lite, build, and serve locally"
-	@echo "  lite           - Build JupyterLite site into $(LITE_DIR)"
-	@echo "  lite-serve     - Serve $(LITE_DIR) at http://$(HOST):$(PORT)"
+	@echo "  lite           - Build JupyterLite site into $(OUT_DIR)"
+	@echo "  lite-serve     - Serve $(OUT_DIR) at http://$(HOST):$(PORT)"
 	@echo "Clean Targets:"
 	@echo "  clean          - Remove build caches and docs output"
 	@echo "  lite-clean     - Remove JupyterLite outputs"
@@ -144,13 +154,6 @@ note-check: $(VENV)/.ready    ## Validate notebooks
 	$(PYTEST) --verbose tests/all_test_notebooks.py
 	@echo "✅ Notebook check complete"
 
-# .PHONY: docs-touch
-# docs-touch: $(VENV)/.ready    ## Touch docs only if files exist (avoids glob errors)
-# 	@sh -c 'set -e; \
-# 	  for p in $(DOCS_DIR)/*.ipynb $(DOCS_DIR)/*.rst; do \
-# 	    [ -e "$$p" ] && touch "$$p"; \
-# 	  done || true'
-
 .PHONY: ruff-check
 ruff-check: $(VENV)/.ready
 	$(RUFF) check
@@ -168,77 +171,94 @@ rcheck: realclean ruff-check test lint rst-check html manifest-check pyroma-chec
 	@echo "✅ Release checks complete"
 
 .PHONY: lite
-lite: $(VENV)/.ready jupyter-lite.json
+lite: $(VENV)/.ready
+	@echo ">> Ensuring root jupyter-lite.json exists"; \
+	[ -f $(ROOT)/jupyter-lite.json ] || { echo "❌ Missing jupyter-lite.json"; exit 1; }
+
 	@echo ">> Clearing doit cache (if present)"
 	@/bin/rm -f "$(DOIT_DB)"
-	@echo ">> Preparing notebook files"
-	@/bin/rm -rf .lite-temp
-	@mkdir -p .lite-temp
-	@cp docs/*.ipynb .lite-temp/ 2>/dev/null || true
-	@echo ">> Building JupyterLite $(LITE_DIR)/*.ipynb"
-	$(PYTHON) -m jupyter lite build \
+
+	@echo ">> Staging notebooks from docs/ (excluding readme_images.ipynb) -> $(STAGE_DIR)"
+	@/bin/rm -rf "$(STAGE_DIR)"; mkdir -p "$(STAGE_DIR)"
+	@/bin/cp docs/*.ipynb "$(STAGE_DIR)"
+
+	@echo ">> Building JupyterLite into $(OUT_DIR)"
+	@/bin/rm -rf "$(OUT_DIR)"; mkdir -p "$(OUT_DIR)"
+	"$(PYTHON)" -m jupyter lite build \
 	  --apps lab \
-	  --contents .lite-temp \
-	  --output-dir "$(LITE_DIR)"
-	@/bin/rm -rf .lite-temp
-	cp jupyter-lite.json "$(LITE_DIR)/jupyter-lite.json"
-	touch "$(LITE_DIR)/.nojekyll"
-	@echo "ok" > "$(LITE_DIR)/.built"
-	@echo "✅ Build complete -> $(LITE_DIR)"
+	  --contents "$(STAGE_DIR)" \
+	  --LiteBuildApp.lite_dir="$(ROOT)" \
+	  --LiteBuildApp.output_dir="$(OUT_DIR)"
+
+	@touch "$(OUT_DIR)/.nojekyll"
+	@echo "✅ Build complete -> $(OUT_DIR)"
+
+.PHONY: lite-serve
+lite-serve:
+	[ -d $(OUT_ROOT) ] || { echo "❌ run 'make lite' first"; exit 1; }
+	@echo ">> Serving _site at http://127.0.0.1:8000/laserbeamsize/?disableCache=1"
+	python3 -m http.server -d "$(OUT_ROOT)" --bind 127.0.0.1 8000
 
 .PHONY: run
 run: lite-clean lite lite-serve
 
-.PHONY: lite-serve
-lite-serve: $(VENV)/.ready
-	@test -f "$(LITE_DIR)/index.html" || { echo "❌ $(LITE_DIR)/index.html not found. Run: make lite"; exit 1; }
-	@# Create a symlink so /lite/laserbeamsize/ maps to your built lite/
-	@mkdir -p "$(LITE_DIR)"
-	@[ -L "$(LITE_DIR)/laserbeamsize" ] || ( cd "$(LITE_DIR)" && ln -s . laserbeamsize )
-	@echo ">> Serving repo root at http://$(HOST):$(PORT) (symlink: $(LITE_DIR)/laserbeamsize -> .)"
-	@python3 -m http.server "$(PORT)" --bind "$(HOST)" --directory "$(PWD)" &
-	@sleep 1
-	@command -v open >/dev/null 2>&1 && open "http://$(HOST):$(PORT)/lite/laserbeamsize/" || true
-	@wait
-
 .PHONY: lite-clean
 lite-clean:
-	@echo ">> Cleaning output and staging dirs"
-	@/bin/rm -rf "$(LITE_DIR)" .lite_contents
-	@/bin/rm -f "$(DOIT_DB)"
-	@if [ -d ".gh-pages" ]; then \
-	    git worktree remove .gh-pages; \
-	fi
-
-# .PHONY: lite-deploy
-# lite-deploy:
-# 	@test -f "$(LITE_DIR)/index.html" || { echo "❌ $(LITE_DIR)/index.html not found. Run: make lite"; exit 1; }
-# 	@echo ">> Deploying $(LITE_DIR)/ -> $(DEPLOY_USER)@$(DEPLOY_HOST):$(DEPLOY_PATH)"
-# 	rsync $(RSYNC_OPTS) -e "$(RSYNC_SSH)" "$(LITE_DIR)/" "$(DEPLOY_USER)@$(DEPLOY_HOST):$(DEPLOY_PATH)"
-# 	@echo ">> Opening $(DEPLOY_URL)"
-# 	@command -v open >/dev/null 2>&1 && open "$(DEPLOY_URL)" || echo "Open: $(DEPLOY_URL)"
+	@echo ">> Cleaning site, stage, caches, and isolated lite_dir"
+	@/bin/rm -rf "$(STAGE_DIR)"
+	@/bin/rm -rf "$(OUT_ROOT)"
+	@/bin/rm -rf ".lite_root"
+	@/bin/rm -rf "$(DOIT_DB)"
+	@/bin/rm -rf "_output"
+	@/bin/rm -rf "__pycache__"
+	@/bin/rm -rf  ".pytest_cache"
 
 .PHONY: lite-deploy
 lite-deploy: lite
-	@echo ">> Publishing $(LITE_DIR) to github-pages"
-	# Create or reuse a worktree for gh-pages branch
-	@if ! git show-ref --verify --quiet refs/heads/gh-pages; then \
-	    git switch --orphan gh-pages && \
-	    git commit --allow-empty -m "Initial gh-pages commit" && \
-	    git switch -; \
+	@echo ">> Sanity checks before deploy"
+	@test -d "$(OUT_DIR)" || { echo "❌ Missing $(OUT_DIR)"; exit 1; }
+	@test -f "$(OUT_DIR)/index.html" || { echo "❌ Missing $(OUT_DIR)/index.html"; exit 1; }
+	@test -f "$(OUT_DIR)/jupyter-lite.json" || { echo "❌ Missing $(OUT_DIR)/jupyter-lite.json"; exit 1; }
+	@grep -q '"baseUrl": *"/laserbeamsize/"' "$(OUT_DIR)/jupyter-lite.json" || { \
+	  echo "❌ jupyter-lite.json baseUrl is not /laserbeamsize/"; exit 1; }
+
+	@echo ">> Ensure $(PAGES_BRANCH) branch exists"
+	@if ! git show-ref --verify --quiet refs/heads/$(PAGES_BRANCH); then \
+	  CURRENT=$$(git branch --show-current); \
+	  git switch --orphan $(PAGES_BRANCH); \
+	  git commit --allow-empty -m "Initialize $(PAGES_BRANCH)"; \
+	  git switch $$CURRENT; \
 	fi
-	@if [ ! -d ".gh-pages" ]; then \
-	    git worktree add .gh-pages gh-pages; \
+
+	@echo ">> Ensure worktree at $(WORKTREE)"
+	@if [ ! -d "$(WORKTREE)/.git" ]; then \
+	  rm -rf "$(WORKTREE)"; \
+	  git worktree add --checkout "$(WORKTREE)" "$(PAGES_BRANCH)"; \
+	else \
+	  git -C "$(WORKTREE)" fetch "$(REMOTE)" "$(PAGES_BRANCH)"; \
+	  git -C "$(WORKTREE)" reset --hard "$(REMOTE)/$(PAGES_BRANCH)" || true; \
 	fi
-	# Copy the built site
-	rm -rf .gh-pages/*
-	cp -R $(LITE_DIR)/* .gh-pages/
-	# Commit and push changes
-	cd .gh-pages && \
-	    git add -A && \
-	    git commit -m "Deploy $$(date -u +'%Y-%m-%d %H:%M:%S UTC')" || true
-	cd .gh-pages && git push origin gh-pages
-	@echo "✅ Deployed to https://scottprahl.github.io/laserbeamsize/"
+
+	@echo ">> Sync $(OUT_DIR) -> $(WORKTREE) (root of Pages)"
+	# Keep CNAME if you use a custom domain; otherwise it's fine to delete it.
+	@rsync -a --delete \
+	  --exclude ".git/" \
+	  --exclude ".gitignore" \
+	  "$(OUT_DIR)/" "$(WORKTREE)/"
+
+	@echo ">> Ensure .nojekyll at Pages root"
+	@touch "$(WORKTREE)/.nojekyll"
+
+	@echo ">> Commit & push if there are changes"
+	@cd "$(WORKTREE)" && \
+	  git add -A && \
+	  if git diff --quiet --cached; then \
+	    echo "✅ No changes to deploy"; \
+	  else \
+	    git commit -m "Deploy $$(date -u +'%Y-%m-%d %H:%M:%S UTC')" && \
+	    git push "$(REMOTE)" "$(PAGES_BRANCH)"; \
+	    echo "✅ Deployed to https://scottprahl.github.io/laserbeamsize/"; \
+	  fi
 
 .PHONY: clean
 clean: ## Remove cache, build artifacts, docs output, and JupyterLite build (but keep config)
