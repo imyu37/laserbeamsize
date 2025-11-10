@@ -39,7 +39,9 @@ laserbeamsize
 =============
 
 |pypi-badge| |github-badge| |conda-badge| |zenodo-badge|
+
 |license-badge| |test-badge| |docs-badge| |downloads-badge|
+
 |lite-badge|
 
 ``laserbeamsize`` is a Python library for fast and reliable calculation of laser beam sizes from images.  
