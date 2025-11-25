@@ -1,3 +1,6 @@
+# install laserbeamsize for development
+-e .
+
 # runtime dependencies
 numpy
 matplotlib
@@ -31,6 +34,7 @@ ipykernel>=6
 sphinx_automodapi
 nbformat
 sphinx_rtd_theme
+jupyterlab
 
 # jupyterlite
 jupyterlite-core==0.4.5
