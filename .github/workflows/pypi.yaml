@@ -12,19 +12,23 @@ jobs:
     permissions:
       contents: read      # checkout
       id-token: write     # OIDC for Trusted Publishing
-
+    
     steps:
-    - uses: actions/checkout@v4.1.2
-
+    - uses: actions/checkout@v4
+    
     - uses: actions/setup-python@v5
       with:
         python-version: '3.12'
         cache: 'pip'
-
-    - run: |
-        python -m pip install --upgrade pip build
-        python -m build --sdist --wheel
-
-    - uses: pypa/gh-action-pypi-publish@release/v1
+    
+    - name: Build package
+      run: |
+        pip install build twine
+        python -m build
+        twine check dist/*
+    
+    - name: Publish to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
       with:
         verbose: true
+        attestations: true  # Optional: enable provenance
