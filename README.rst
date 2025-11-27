@@ -1,36 +1,36 @@
-.. |pypi-badge| image:: https://img.shields.io/pypi/v/laserbeamsize?color=68CA66
+.. |pypi| image:: https://img.shields.io/pypi/v/laserbeamsize?color=68CA66
    :target: https://pypi.org/project/laserbeamsize/
    :alt: PyPI
 
-.. |github-badge| image:: https://img.shields.io/github/v/tag/scottprahl/laserbeamsize?label=github&color=68CA66
+.. |github| image:: https://img.shields.io/github/v/tag/scottprahl/laserbeamsize?label=github&color=68CA66
    :target: https://github.com/scottprahl/laserbeamsize
    :alt: GitHub
 
-.. |conda-badge| image:: https://img.shields.io/conda/vn/conda-forge/laserbeamsize?label=conda&color=68CA66
+.. |conda| image:: https://img.shields.io/conda/vn/conda-forge/laserbeamsize?label=conda&color=68CA66
    :target: https://github.com/conda-forge/laserbeamsize-feedstock
    :alt: Conda
 
-.. |zenodo-badge| image:: https://img.shields.io/badge/DOI-10.5281/zenodo.8346799-68CA66.svg
-   :target: https://zenodo.org/badge/latestdoi/8346799
-   :alt: Zenodo
+.. |doi| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.8346799.svg
+   :target: https://doi.org/10.5281/zenodo.8346799
+   :alt: DOI
 
-.. |license-badge| image:: https://img.shields.io/badge/license-MIT-68CA66
+.. |license| image:: https://img.shields.io/badge/license-MIT-68CA66
    :target: https://github.com/scottprahl/laserbeamsize/blob/main/LICENSE.txt
    :alt: License
 
-.. |test-badge| image:: https://github.com/scottprahl/laserbeamsize/actions/workflows/test.yaml/badge.svg
+.. |test| image:: https://github.com/scottprahl/laserbeamsize/actions/workflows/test.yaml/badge.svg
    :target: https://github.com/scottprahl/laserbeamsize/actions/workflows/test.yaml
    :alt: Tests
 
-.. |docs-badge| image:: https://readthedocs.org/projects/laserbeamsize/badge?color=68CA66
+.. |docs| image:: https://readthedocs.org/projects/laserbeamsize/badge?color=68CA66
    :target: https://laserbeamsize.readthedocs.io
    :alt: Documentation
 
-.. |downloads-badge| image:: https://img.shields.io/pypi/dm/laserbeamsize?color=68CA66
+.. |downloads| image:: https://img.shields.io/pypi/dm/laserbeamsize?color=68CA66
    :target: https://pypi.org/project/laserbeamsize/
    :alt: Downloads
 
-.. |lite-badge| image:: https://img.shields.io/badge/try-JupyterLite-68CA66.svg
+.. |lite| image:: https://img.shields.io/badge/try-JupyterLite-68CA66.svg
    :target: https://scottprahl.github.io/laserbeamsize/
    :alt: Try JupyterLite
 
@@ -38,11 +38,11 @@
 laserbeamsize
 =============
 
-|pypi-badge| |github-badge| |conda-badge| |zenodo-badge|
+|pypi| |github| |conda| |doi|
 
-|license-badge| |test-badge| |docs-badge| |downloads-badge|
+|license| |test| |docs| |downloads|
 
-|lite-badge|
+|lite|
 
 ``laserbeamsize`` is a Python library for fast and reliable calculation of laser beam sizes from images.  
 It implements the ISO 11146 variance method with enhancements that reduce sensitivity to background offset, noise, and nonideal beam profiles.
@@ -79,7 +79,7 @@ Or with ``conda``::
 
 You can also run the library immediately in the browser using JupyterLite:
 
-|lite-badge|
+|lite|
 
 
 Quick Start: Determining Beam Size

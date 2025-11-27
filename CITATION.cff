@@ -1,11 +1,54 @@
+cff-version: 1.2.0
+type: software
+message: If you use this software, please cite it as below.
+title: 'laserbeamsize: ISO 11146 Calculation of Laser Beam Center, Diameter, and M²'
+version: 2.2.0
+doi: 10.5281/zenodo.8346799
+date-released: '2025-11-10'
+url: https://doi.org/10.5281/zenodo.8346799
+repository-code: https://github.com/scottprahl/laserbeamsize
+license: MIT
 authors:
 - family-names: Prahl
   given-names: Scott
   orcid: https://orcid.org/0000-0003-1468-6851
-cff-version: 1.2.0
-date-released: '2025-11-10'
-doi: 10.5281/zenodo.8352116
-message: If you use this software, please cite it as below.
-title: 'laserbeamsize: a python module for ISO 11146 analysis of laser beams'
-url: https://zenodo.org/badge/latestdoi/107437651
-version: 2.2.0
+abstract: 'laserbeamsize is a Python library for analyzing laser beam quality according
+  to the ISO 11146 standard. It provides tools for calculating beam center, diameter,
+  divergence, and M² parameter from beam profile images. The package implements variance-based
+  beam size calculations, background noise handling, and beam propagation analysis
+  for TEM00 and higher-order modes. It is intended for education, research, and engineering
+  applications in laser metrology and beam characterization.
+keywords:
+- variance
+- gaussian
+- M-squared
+- d4sigma
+- M2
+- M²
+- spotsize
+- laser beam
+- ISO11146
+- divergence
+- beam waist
+- TEM00
+- beam diameter
+- beam parameter product
+- BPP
+- laser propagation
+- beam profiling
+- beam optics
+- beam measurement
+- laser metrology
+- beam quality
+- beam analysis
+preferred-citation:
+  type: software
+  title: 'laserbeamsize: ISO 11146 Calculation of Laser Beam Center, Diameter, and M²'
+  year: 2025
+  version: 2.2.0
+  doi: 10.5281/zenodo.8346799
+  url: https://doi.org/10.5281/zenodo.8346799
+  authors:
+  - family-names: Prahl
+    given-names: Scott
+    orcid: https://orcid.org/0000-0003-1468-6851
