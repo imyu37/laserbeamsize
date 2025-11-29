@@ -6,6 +6,7 @@ Full documentation is available at <https://laserbeamsize.readthedocs.io>
 """
 
 import numpy as np
+from numpy import ma
 import scipy.ndimage
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
@@ -505,8 +506,6 @@ def crop_image_to_rect(image, xc_px, yc_px, xmin, xmax, ymin, ymax):
         cropped_image: cropped masked array (None if resulting crop is too small)
         new_xc, new_yc: new beam center (pixels, None if crop is too small)
     """
-    import numpy.ma as ma
-
     v, h = image.shape
 
     # Convert to integers
