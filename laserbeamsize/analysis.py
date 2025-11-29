@@ -22,7 +22,6 @@ Finding the center and diameters of a beam in a monochrome image is simple::
     >>> print("The major axis of the ellipse is rotated %.0f° ccw from the horizontal" % (phi * 180/3.1416))
 """
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 from .background import subtract_iso_background, rotated_rect_mask
