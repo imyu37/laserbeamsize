@@ -54,16 +54,77 @@ __all__ = (
 )
 
 
+def _get_unmasked_bounding_box(image):
+    """
+    Get the bounding box of the unmasked region in a masked image.
+
+    Args:
+        image: potentially masked image
+
+    Returns:
+        tuple: (row_min, row_max, col_min, col_max, v_inner, h_inner)
+               If image is not masked, returns full image bounds.
+               If no unmasked pixels, returns None.
+    """
+    v, h = image.shape
+
+    if np.ma.is_masked(image):
+        # Find rows and columns that contain unmasked pixels
+        unmasked_rows = np.where(~image.mask.all(axis=1))[0]
+        unmasked_cols = np.where(~image.mask.all(axis=0))[0]
+
+        if len(unmasked_rows) == 0 or len(unmasked_cols) == 0:
+            # No unmasked pixels
+            return None
+
+        # Bounding box of unmasked region
+        row_min = unmasked_rows[0]
+        row_max = unmasked_rows[-1] + 1
+        col_min = unmasked_cols[0]
+        col_max = unmasked_cols[-1] + 1
+
+        # Size of the unmasked region
+        v_inner = row_max - row_min
+        h_inner = col_max - col_min
+    else:
+        # Use the full image
+        row_min, row_max = 0, v
+        col_min, col_max = 0, h
+        v_inner = v
+        h_inner = h
+
+    return row_min, row_max, col_min, col_max, v_inner, h_inner
+
+
+def _apply_image_mask(mask, image):
+    """
+    Apply existing image mask to exclude already-masked pixels.
+
+    Args:
+        mask: boolean mask to modify
+        image: potentially masked image
+
+    Returns:
+        modified mask with image.mask applied if present
+    """
+    if np.ma.is_masked(image):
+        return mask & ~image.mask
+    return mask
+
+
 def elliptical_mask(image, xc, yc, d_major, d_minor, phi):
     """
     Create a boolean mask for a rotated elliptical disk.
 
     The returned mask is the same size as `image`.
 
+    If the image is already masked, only unmasked pixels within the
+    ellipse will be marked as True.
+
     Args:
-        image: 2D array
-        xc: horizontal center of beam
-        yc: vertical center of beam
+        image: 2D array (may be a masked array)
+        xc: horizontal center of beam (in full image coordinates)
+        yc: vertical center of beam (in full image coordinates)
         d_major: semi-major ellipse diameter
         d_minor: semi-minor ellipse diameter
         phi: angle between horizontal and major axes [radians]
@@ -83,7 +144,34 @@ def elliptical_mask(image, xc, yc, d_major, d_minor, phi):
     r2 = (xx * cosphi - yy * sinphi) ** 2 / rx**2 + (xx * sinphi + yy * cosphi) ** 2 / ry**2
     the_mask = r2 <= 1
 
-    return the_mask
+    return _apply_image_mask(the_mask, image)
+
+
+# def corner_mask(image, corner_fraction=0.035):
+#     """
+#     Create boolean mask for image with corners marked as True.
+#
+#     Each of the four corners is a fixed percentage of the entire image.
+#
+#     ISO 11146-3 recommends values from 2-5% for `corner_fraction`
+#     the default is 0.035=3.5% of the iamge.
+#
+#     Args:
+#         image : the image to work with
+#         corner_fraction: the fractional size of corner rectangles
+#     Returns:
+#         masked_image: 2D array with True values in four corners
+#     """
+#     v, h = image.shape
+#     n = int(v * corner_fraction)
+#     m = int(h * corner_fraction)
+#
+#     the_mask = np.full_like(image, False, dtype=bool)
+#     the_mask[:n, :m] = True
+#     the_mask[:n, -m:] = True
+#     the_mask[-n:, :m] = True
+#     the_mask[-n:, -m:] = True
+#     return the_mask
 
 
 def corner_mask(image, corner_fraction=0.035):
@@ -91,26 +179,43 @@ def corner_mask(image, corner_fraction=0.035):
     Create boolean mask for image with corners marked as True.
 
     Each of the four corners is a fixed percentage of the entire image.
-
     ISO 11146-3 recommends values from 2-5% for `corner_fraction`
-    the default is 0.035=3.5% of the iamge.
+    the default is 0.035=3.5% of the image.
+
+    If the image is already masked, the corners are taken from the
+    bounding box of the unmasked region (where image.mask=False).
 
     Args:
-        image : the image to work with
+        image: the image to work with (may be a masked array)
         corner_fraction: the fractional size of corner rectangles
+
     Returns:
         masked_image: 2D array with True values in four corners
     """
     v, h = image.shape
-    n = int(v * corner_fraction)
-    m = int(h * corner_fraction)
 
-    the_mask = np.full_like(image, False, dtype=bool)
-    the_mask[:n, :m] = True
-    the_mask[:n, -m:] = True
-    the_mask[-n:, :m] = True
-    the_mask[-n:, -m:] = True
-    return the_mask
+    # Get bounding box of unmasked region
+    bbox = _get_unmasked_bounding_box(image)
+    if bbox is None:
+        # No unmasked pixels, return all False
+        return np.full((v, h), False, dtype=bool)
+
+    row_min, row_max, col_min, col_max, v_inner, h_inner = bbox
+
+    # Calculate corner sizes based on inner region
+    n = int(v_inner * corner_fraction)
+    m = int(h_inner * corner_fraction)
+
+    # Create the mask
+    the_mask = np.full((v, h), False, dtype=bool)
+
+    # Mark the four corners of the inner region
+    the_mask[row_min : row_min + n, col_min : col_min + m] = True  # top-left
+    the_mask[row_min : row_min + n, col_max - m : col_max] = True  # top-right
+    the_mask[row_max - n : row_max, col_min : col_min + m] = True  # bottom-left
+    the_mask[row_max - n : row_max, col_max - m : col_max] = True  # bottom-right
+
+    return _apply_image_mask(the_mask, image)
 
 
 def perimeter_mask(image, corner_fraction=0.035):
@@ -120,22 +225,38 @@ def perimeter_mask(image, corner_fraction=0.035):
     The perimeter is the same width as the corners created by corner_mask
     which is a fixed percentage (default 3.5%) of the entire image.
 
+    If the image is already masked, the perimeter is taken from the
+    bounding box of the unmasked region (where image.mask=False).
+
     Args:
-        image : the image to work with
+        image: the image to work with (may be a masked array)
         corner_fraction: determines the width of the perimeter
     Returns:
         masked_image: 2D array with True values around rect perimeter
     """
     v, h = image.shape
-    n = int(v * corner_fraction)
-    m = int(h * corner_fraction)
 
-    the_mask = np.full_like(image, False, dtype=bool)
-    the_mask[:, :m] = True
-    the_mask[:, -m:] = True
-    the_mask[:n, :] = True
-    the_mask[-n:, :] = True
-    return the_mask
+    # Get bounding box of unmasked region
+    bbox = _get_unmasked_bounding_box(image)
+    if bbox is None:
+        # No unmasked pixels, return all False
+        return np.full((v, h), False, dtype=bool)
+
+    row_min, row_max, col_min, col_max, v_inner, h_inner = bbox
+
+    # Calculate perimeter width based on inner region
+    n = int(v_inner * corner_fraction)
+    m = int(h_inner * corner_fraction)
+
+    the_mask = np.full((v, h), False, dtype=bool)
+
+    # Mark the perimeter of the inner region
+    the_mask[row_min:row_max, col_min : col_min + m] = True  # left edge
+    the_mask[row_min:row_max, col_max - m : col_max] = True  # right edge
+    the_mask[row_min : row_min + n, col_min:col_max] = True  # top edge
+    the_mask[row_max - n : row_max, col_min:col_max] = True  # bottom edge
+
+    return _apply_image_mask(the_mask, image)
 
 
 def rotated_rect_mask_slow(image, xc, yc, d_major, d_minor, phi, mask_diameters=3):
@@ -183,7 +304,7 @@ def rotated_rect_mask_slow(image, xc, yc, d_major, d_minor, phi, mask_diameters=
     return rot_mask
 
 
-def rotated_rect_mask(image, xc, yc, d_major, d_minor, phi, mask_diameters=3):
+def rotated_rect_mask(image, xc, yc, d_major, d_minor, phi):
     """
     Create a boolean mask of a rotated rectangle within an image using NumPy.
 
@@ -203,10 +324,13 @@ def rotated_rect_mask(image, xc, yc, d_major, d_minor, phi, mask_diameters=3):
 
     The rectangular mask is rotated about (xc, yc) and then drawn using PIL
 
+    If the image is already masked, only unmasked pixels within the
+    rectangle will be marked as True.
+
     Args:
-        image: the image to work with
-        xc: horizontal center of beam
-        yc: vertical center of beam
+        image: the image to work with (may be a masked array)
+        xc: horizontal center of beam (in full image coordinates)
+        yc: vertical center of beam (in full image coordinates)
         d_major: semi-major ellipse diameter
         d_minor: semi-minor ellipse diameter
         phi: angle between horizontal and major axes [radians]
@@ -215,8 +339,8 @@ def rotated_rect_mask(image, xc, yc, d_major, d_minor, phi, mask_diameters=3):
         masked_image: 2D array with True values inside rectangle
     """
     height, width = image.shape
-    rx = mask_diameters * d_major / 2
-    ry = mask_diameters * d_minor / 2
+    rx = d_major / 2
+    ry = d_minor / 2
 
     # create a meshgrid of pixel coordinates
     y, x = np.ogrid[:height, :width]
@@ -231,7 +355,8 @@ def rotated_rect_mask(image, xc, yc, d_major, d_minor, phi, mask_diameters=3):
 
     # define mask for points inside the rotated rectangle
     mask = (np.abs(x_rot) <= rx) & (np.abs(y_rot) <= ry)
-    return mask
+
+    return _apply_image_mask(mask, image)
 
 
 def iso_background_mask(image, corner_fraction=0.035, nT=3):
@@ -242,8 +367,11 @@ def iso_background_mask(image, corner_fraction=0.035, nT=3):
     corners.  All pixel values that fall below the mean+nT*stdev are considered
     unilluminated (background) pixels.
 
+    If the image is already masked, only unmasked pixels will be considered
+    for background determination.
+
     Args:
-        image : the image to work with
+        image: the image to work with (may be a masked array)
         nT: how many standard deviations to subtract
         corner_fraction: the fractional size of corner rectangles
     Returns:
@@ -257,7 +385,7 @@ def iso_background_mask(image, corner_fraction=0.035, nT=3):
 
     background_mask = image < threshold
 
-    return background_mask
+    return _apply_image_mask(background_mask, image)
 
 
 def subtract_background_image(original, background):
