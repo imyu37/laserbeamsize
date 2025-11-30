@@ -30,7 +30,6 @@ from .image_tools import rotate_image
 __all__ = (
     "basic_beam_size",
     "beam_size",
-    "basic_beam_size_naive",
 )
 
 
