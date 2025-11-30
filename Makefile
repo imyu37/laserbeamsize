@@ -2,7 +2,7 @@ PACKAGE         := laserbeamsize
 GITHUB_USER     := scottprahl
 
 # -------- venv config --------
-PY_VERSION      ?= 3.11
+PY_VERSION      ?= 3.12
 VENV            ?= .venv
 PY              := /opt/homebrew/opt/python@$(PY_VERSION)/bin/python$(PY_VERSION)
 PYTHON          := $(VENV)/bin/python
