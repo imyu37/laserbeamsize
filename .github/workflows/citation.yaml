@@ -1,48 +1,44 @@
-# .github/workflows/citation.yaml
-name: Update CITATION.cff
+---
+name: citation
 
-on:
+on:    # yamllint disable-line rule:truthy
   release:
     types: [published]
   workflow_dispatch:
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true        # never run two updates in parallel
-
 jobs:
   update-citation:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write             # needed for committing back to the repo
 
     steps:
-    - name: Checkout sources
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0          # ensure tags are present for release info
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          # Need full history so we can push back to the branch
+          fetch-depth: 0
+          # On a release event, use the branch/tag the release points to
+          # On workflow_dispatch, fall back to the current ref
+          ref: ${{ github.event.release.target_commitish || github.ref }}
 
-    - name: Setup Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.12'
-        cache: pip
-        cache-dependency-path: .github/scripts/update_citation.py
+      - name: Install python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
 
-    - name: Install deps
-      run: python -m pip install --upgrade pip requests pyyaml
+      - name: Install dependencies needed for update_citation.py
+        run: |
+          pip install requests PyYAML
 
-    - name: Regenerate CITATION.cff
-      run: python .github/scripts/update_citation.py
+      - name: Update CITATION.cff and README.rst
+        run: |
+          python .github/scripts/update_citation.py
 
-    - name: Commit and push if changed
-      run: |
-        if git diff --quiet CITATION.cff; then
-          echo "No changes – skipping commit."
-        else
-          git config user.email "actions@github.com"
-          git config user.name  "GitHub Actions"
-          git add CITATION.cff
-          git commit -m "chore(citation): refresh after ${{ github.event.release.tag_name }}"
-          git push origin HEAD:main
-        fi
+      - name: Commit and Push CITATION.cff Update
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git diff --exit-code || (
+            git add CITATION.cff README.rst &&
+            git commit -m "Update CITATION.cff with latest release date" &&
+            git push
+          )
