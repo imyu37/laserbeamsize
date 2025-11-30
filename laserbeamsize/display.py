@@ -145,9 +145,9 @@ def plot_beam_diagram():
 def plot_visible_dotted_line(xpts, ypts):
     """Draw a dotted line that is is visible against images."""
     # White solid line underneath
-    plt.plot(xpts, ypts, color="white", linewidth=2, solid_capstyle="round")
+    plt.plot(xpts, ypts, color="white", linewidth=1, solid_capstyle="round")
     # Black dashes on top
-    plt.plot(xpts, ypts, color="black", linewidth=2, linestyle=(0, (1, 1)), solid_capstyle="round")
+    plt.plot(xpts, ypts, color="black", linewidth=1, linestyle=(0, (3, 2)), solid_capstyle="round")
 
 
 def set_zero_to_lightgray(cmap_name, min_val, max_val):
@@ -161,9 +161,35 @@ def set_zero_to_lightgray(cmap_name, min_val, max_val):
         idx = int(256 * abs(min_val) / (max_val - min_val))
 
     colors[idx] = [0.827, 0.827, 0.827, 1.0]
-    colors[idx] = [0.7, 0.7, 0.7, 1.0]
+#    colors[idx] = [0.7, 0.7, 0.7, 1.0]
 
     return mcolors.ListedColormap(colors)
+
+
+def _format_beam_title(d_major, d_minor, units="µm", z=None):
+    """
+    Return a standardized title string describing the beam diameters
+    (and optionally the z position).
+
+    d_major, d_minor are in the same units passed in via `units`.
+    """
+
+    def _fmt(val, label):
+        if val is None or (isinstance(val, float) and np.isnan(val)):
+            return f"{label} fail"
+        if units == "mm":
+            return f"{label}={val:.2f}{units}"
+        return f"{label}={val:.0f}{units}"
+
+    s1 = _fmt(d_major, "$d_{major}$")
+    s2 = _fmt(d_minor, "$d_{minor}$")
+    s = f"{s1}, {s2}"
+
+    if z is None:
+        return s
+
+    # z is in meters; display in mm as in the montage
+    return f"z={z * 1e3:.0f}mm, {s}"
 
 
 def _prepare_beam_analysis(image, corner_fraction, nT, iso_noise, **kwargs):
@@ -195,36 +221,26 @@ def _prepare_beam_analysis(image, corner_fraction, nT, iso_noise, **kwargs):
     return diameters, xc_px, yc_px, d_major_px, d_minor_px, phi
 
 
-def _setup_scale_and_labels(pixel_size, units, for_analysis=False):
+def _setup_scale_and_labels(pixel_size, units):
     """
     Determine scaling factor and axis labels.
 
     Args:
         pixel_size: size of pixels (None for pixel units)
         units: string for physical units
-        for_analysis: if True, use format for plot_image_analysis
 
     Returns:
         tuple: (scale, label, units_str)
     """
     if pixel_size is None:
         scale = 1
-        if for_analysis:
-            label = "Pixels from Center"
-            units_str = "pixels"
-        else:
-            label = "Pixels"
-            units_str = units
+        unit_str = "px"
     else:
         scale = pixel_size
-        if for_analysis:
-            label = "Distance from Center [%s]" % units
-            units_str = units
-        else:
-            label = "Position (%s)" % units
-            units_str = units
+        unit_str = units
 
-    return scale, label, units_str
+    label = "Distance from Center [%s]" % unit_str
+    return scale, label, unit_str
 
 
 def _crop_image_if_needed(o_image, xc_px, yc_px, d_major_px, d_minor_px, phi, crop, scale, diameters):
@@ -294,6 +310,78 @@ def _draw_beam_overlays(xc_px, yc_px, d_major_px, d_minor_px, phi, diameters, sc
         plot_visible_dotted_line((xp2_px - xc_px) * scale, (yp2_px - yc_px) * scale)
 
 
+def _plot_image_with_beam_overlay(
+    image,
+    xc_px,
+    yc_px,
+    d_major_px,
+    d_minor_px,
+    phi,
+    diameters,
+    scale,
+    label,
+    cmap,
+    vmin=None,
+    vmax=None,
+    title=None,
+    colorbar=True,
+):
+    """
+    Core function to plot an image with beam overlays.
+
+    Used by both plot_image_and_fit and plot_image_analysis.
+
+    Args:
+        image: 2D image to display
+        xc_px, yc_px: beam center in pixels
+        d_major_px, d_minor_px: beam diameters in pixels
+        phi: beam angle in radians
+        diameters: integration rectangle size multiplier
+        scale: pixel to unit conversion
+        label: axis label string
+        cmap: colormap
+        vmin, vmax: colorbar limits
+        title: optional plot title
+        colorbar: whether to show colorbar
+
+    Returns:
+        im: the image object
+    """
+    v_px, h_px = image.shape
+    extent = np.array([-xc_px, h_px - xc_px, v_px - yc_px, -yc_px]) * scale
+
+    # establish colorbar limits
+    if vmax is None:
+        vmax = image.max()
+    if vmin is None:
+        vmin = image.min()
+
+    # add gray to cmap around zero
+    ccmap = set_zero_to_lightgray(cmap, vmin, vmax)
+
+    # display image
+    im = plt.imshow(image, extent=extent, cmap=ccmap, vmax=vmax, vmin=vmin)
+    im.cmap.set_bad(color="black")
+    plt.xlabel(label)
+    plt.ylabel(label)
+
+    # Draw beam overlays (ellipse, axes, integration rectangle)
+    _draw_beam_overlays(xc_px, yc_px, d_major_px, d_minor_px, phi, diameters, scale)
+
+    # set limits on axes
+    plt.xlim(-xc_px * scale, (h_px - xc_px) * scale)
+    plt.ylim((v_px - yc_px) * scale, -yc_px * scale)
+
+    if title:
+        plt.title(title)
+
+    # show colorbar
+    if colorbar:
+        plt.colorbar(im, fraction=0.046 * v_px / h_px, pad=0.04)
+
+    return im
+
+
 def plot_image_and_fit(
     o_image,
     pixel_size=None,
@@ -341,14 +429,10 @@ def plot_image_and_fit(
         corner_fraction: (optional) the fractional size of corner rectangles
         nT: (optional) how many standard deviations to subtract
         iso_noise: (optional) if True then allow negative pixel values
-        **kwargs: (optional) extra options to modify display
+        kwargs: additional arguments passed through to beam_size
 
     Returns:
-        xc: horizontal center of beam
-        yc: vertical center of beam
-        d_major: major axis (i.e, major diameter)
-        d_minor: minor axis (i.e, minor diameter)
-        phi: angle between major axis and horizontal axis [radians]
+        xc, yc, d_major, d_minor, phi
     """
     # Common beam analysis setup
     diameters, xc_px, yc_px, d_major_px, d_minor_px, phi = _prepare_beam_analysis(
@@ -356,43 +440,45 @@ def plot_image_and_fit(
     )
 
     # Setup scale and labels
-    scale, label, _ = _setup_scale_and_labels(pixel_size, units, for_analysis=False)
+    scale, label, unit_str = _setup_scale_and_labels(pixel_size, units)
 
-    # Crop image if necessary
+    # Crop image if necessary (analysis is already done on o_image)
     image, xc_px, yc_px = _crop_image_if_needed(
         o_image, xc_px, yc_px, d_major_px, d_minor_px, phi, crop, scale, diameters
     )
 
-    # establish maximum colorbar value
-    if vmax is None:
-        vmax = image.max()
-    if vmin is None:
-        vmin = image.min()
+    # For display, use the same ISO-11146 background subtraction used by
+    # plot_image_analysis (subplot 2,2,2). This drives the background toward
+    # zero so that the colormap can put zero at gray.
+    working_image = subtract_iso_background(
+        image, corner_fraction=corner_fraction, nT=nT, iso_noise=iso_noise
+    )
 
-    # extents may be changed by scale
-    v_px, h_px = image.shape
-    extent = np.array([-xc_px, h_px - xc_px, v_px - yc_px, -yc_px]) * scale
+    # Convert diameters to the requested units for the title
+    d_major = d_major_px * scale if d_major_px is not None else None
+    d_minor = d_minor_px * scale if d_minor_px is not None else None
 
-    # add gray to cmap around zero
-    ccmap = set_zero_to_lightgray(cmap, vmin, vmax)
+    # Standardized title: same as used in the montage when z is None
+    title = _format_beam_title(d_major, d_minor, units=unit_str, z=None)
 
-    # display image and axes labels
-    im = plt.imshow(image, extent=extent, cmap=ccmap, vmax=vmax, vmin=vmin)
-    im.cmap.set_bad(color="black")  # color for padded values
-    plt.xlabel(label)
-    plt.ylabel(label)
-
-    # Draw beam overlays (ellipse, axes, integration rectangle)
-    _draw_beam_overlays(xc_px, yc_px, d_major_px, d_minor_px, phi, diameters, scale)
-
-    # set limits on axes
-    plt.xlim(-xc_px * scale, (h_px - xc_px) * scale)
-    plt.ylim((v_px - yc_px) * scale, -yc_px * scale)
-
-    # show colorbar
-    if colorbar:
-        v_px, h_px = image.shape
-        plt.colorbar(im, fraction=0.046 * v_px / h_px, pad=0.04)
+    # Use helper function for plotting; vmin/vmax still honored but now apply
+    # to the background-subtracted image.
+    _plot_image_with_beam_overlay(
+        working_image,
+        xc_px,
+        yc_px,
+        d_major_px,
+        d_minor_px,
+        phi,
+        diameters,
+        scale,
+        label,
+        cmap,
+        vmin,
+        vmax,
+        title=title,
+        colorbar=colorbar,
+    )
 
     if d_minor_px is not None:
         ds = d_minor_px * scale
@@ -450,8 +536,7 @@ def plot_image_analysis(
     )
 
     # Setup scale and labels
-    scale, label, units_str = _setup_scale_and_labels(pixel_size, units, for_analysis=True)
-    units_str = "px" if pixel_size is None else "[%s]" % units_str
+    scale, label, units_str = _setup_scale_and_labels(pixel_size, units)
 
     # Crop image if necessary
     image, xc_px, yc_px = _crop_image_if_needed(
@@ -473,10 +558,7 @@ def plot_image_analysis(
     h_s = hh_px * scale
     xc_s = xc_px * scale
     yc_s = yc_px * scale
-
-    r_major_px = d_major_px / 2.0
-    r_mag_s = r_major_px * scale
-    d_mag_s = r_mag_s * 2
+    r_major_s = d_major_px * scale / 2
 
     plt.subplots(2, 2, figsize=(12, 12))
     plt.subplots_adjust(right=1.0)
@@ -490,26 +572,34 @@ def plot_image_analysis(
     im.cmap.set_bad(color="black")  # color for padded values
     plt.colorbar(im, fraction=0.046 * v_s / h_s, pad=0.04)
     plt.clim(min_, max_)
-    plt.xlabel("Position (pixels)")
-    plt.ylabel("Position (pixels)")
+    plt.xlabel("Position [px]")
+    plt.ylabel("Position [px]")
     plt.title(title + ", center at (%.0f, %.0f) px" % (xc_px, yc_px))
 
     # working image
     plt.subplot(2, 2, 2)
-    extent = np.array([-xc_s, h_s - xc_s, v_s - yc_s, -yc_s])
-    im = plt.imshow(working_image, extent=extent, cmap=ccmap)
-    im.cmap.set_bad(color="black")  # color for padded values
 
-    # Draw beam overlays (ellipse, axes, integration rectangle)
-    _draw_beam_overlays(xc_px, yc_px, d_major_px, d_minor_px, phi, diameters, scale)
+    # diameters in display units for a consistent title
+    d_major = d_major_px * scale if d_major_px is not None else None
+    d_minor = d_minor_px * scale if d_minor_px is not None else None
+    work_title = _format_beam_title(d_major, d_minor, units=units, z=None)
 
-    plt.colorbar(im, fraction=0.046 * v_s / h_s, pad=0.04)
-    #    plt.clim(min_, max_)
-    plt.xlim(-xc_s, h_s - xc_s)
-    plt.ylim(v_s - yc_s, -yc_s)
-    plt.xlabel(label)
-    plt.ylabel(label)
-    plt.title("Image w/o background, center at (0, 0)")
+    _plot_image_with_beam_overlay(
+        working_image,
+        xc_px,
+        yc_px,
+        d_major_px,
+        d_minor_px,
+        phi,
+        diameters,
+        scale,
+        label,
+        cmap,
+        vmin=None,
+        vmax=None,
+        title=work_title,
+        colorbar=True,
+    )
 
     extra = 1.03
 
@@ -517,61 +607,68 @@ def plot_image_analysis(
 
     rect_major_px = d_major_px * diameters
     _, _, z_major, s_major_px = major_axis_arrays(image, xc_px, yc_px, rect_major_px, phi)
-    a_major = np.sqrt(2 / np.pi) / r_major_px * abs(np.sum(z_major - bkgnd) * (s_major_px[1] - s_major_px[0]))
+    a_major = np.sqrt(8 / np.pi) / d_major_px * abs(np.sum(z_major - bkgnd) * (s_major_px[1] - s_major_px[0]))
+
+    a_minor = 0
+    z_minor = np.array([0])
+    r_minor_s = 0
+    if d_minor_px is not None:
+        r_minor_s = d_minor_px * scale / 2
+        rect_minor_px = d_minor_px * diameters
+        _, _, z_minor, s_minor_px = minor_axis_arrays(image, xc_px, yc_px, rect_minor_px, phi)
+        a_minor = (
+            np.sqrt(8 / np.pi) / d_minor_px * abs(np.sum(z_minor - bkgnd) * (s_minor_px[1] - s_minor_px[0]))
+        )
 
     baseline = float(a_major) * np.exp(-2 * (diameters / 2) ** 2) + bkgnd
     base_e2 = float(a_major) * np.exp(-2) + bkgnd
 
-    y_min = min(0, np.min(z_major))
-    y_max = max(a_major, np.max(z_major)) * extra + baseline
+    z_min = 0
+    z_max = np.max([a_major, np.max(z_major), a_minor, np.max(z_minor)]) * extra + baseline
+
+    offset = r_major_s
+    if r_major_s > max(s_major_px) * scale / 2:
+        offset=0
 
     plt.subplot(2, 2, 3)
     plt.plot(s_major_px * scale, z_major, "sb", markersize=2)
     plt.plot(s_major_px * scale, z_major, "-b", lw=0.5)
-    z_values = bkgnd + a_major * np.exp(-2 * (s_major_px / r_major_px) ** 2)
+    # gaussian and label
+    z_values = bkgnd + a_major * np.exp(-8 * (s_major_px / d_major_px) ** 2)
     plt.plot(s_major_px * scale, z_values, "k")
-    plt.annotate("", (-r_mag_s, base_e2), (r_mag_s, base_e2), arrowprops={"arrowstyle": "<->"})
-    plt.text(0, 1.1 * base_e2, "d_major=%.0f %s" % (d_mag_s, units_str), va="bottom", ha="center")
     plt.text(0, bkgnd + a_major, "  Gaussian Fit")
+    # double arrow and label
+    plt.annotate("", (-r_major_s, base_e2), (r_major_s, base_e2), arrowprops={"arrowstyle": "<->"})
+    if r_major_s < max(s_major_px) * scale / 2:
+        plt.text(r_major_s, base_e2, "  $d_{major}$=%.0f %s" % (2*r_major_s, units_str), va="center", ha="left")
+    else:
+        plt.text(0, 1.1*base_e2, "$d_{major}$=%.0f %s" % (2*r_major_s, units_str), va="bottom", ha="center")
     plt.xlabel("Distance from Center [%s]" % units_str)
-    plt.ylabel("Pixel Intensity Along Major Axis")
+    plt.ylabel("Pixel Value")
     plt.title("Major Axis")
-    plt.ylim(y_min, y_max)
+    plt.ylim(z_min, z_max)
     plt.xlim(min(s_major_px) * scale, max(s_major_px) * scale)
 
-    if d_minor_px is not None:
-        r_minor_px = d_minor_px / 2.0
-        r_min_s = r_minor_px * scale
-        d_min_s = r_min_s * 2
-
-        rect_minor_px = d_minor_px * diameters
-        _, _, z_minor, s_minor_px = minor_axis_arrays(image, xc_px, yc_px, rect_minor_px, phi)
-        a_minor = (
-            np.sqrt(2 / np.pi) / r_minor_px * abs(np.sum(z_minor - bkgnd) * (s_minor_px[1] - s_minor_px[0]))
-        )
-
-        if d_major_px is None:
-            baseline = float(a_minor) * np.exp(-2 * (diameters / 2) ** 2) + bkgnd
-            base_e2 = float(a_minor) * np.exp(-2) + bkgnd
-
-            y_min = min(0, np.min(z_minor))
-            y_max = max(a_minor, np.max(z_major)) * extra + baseline
-
-        # plot of values along minor axis
+    if d_minor_px is not None:  # plot of values along minor axis
         plt.subplot(2, 2, 4)
         plt.plot(s_minor_px * scale, z_minor, "sb", markersize=2)
         plt.plot(s_minor_px * scale, z_minor, "-b", lw=0.5)
-        z_values = bkgnd + a_minor * np.exp(-2 * (s_minor_px / r_minor_px) ** 2)
+        z_values = bkgnd + a_minor * np.exp(-8 * (s_minor_px / d_minor_px) ** 2)
         plt.plot(s_minor_px * scale, z_values, "k")
-        plt.annotate("", (-r_min_s, base_e2), (r_min_s, base_e2), arrowprops={"arrowstyle": "<->"})
-        plt.text(0, 1.1 * base_e2, "d_minor=%.0f %s" % (d_min_s, units_str), va="bottom", ha="center")
+        # double arrow and label
+        plt.annotate("", (-r_minor_s, base_e2), (r_minor_s, base_e2), arrowprops={"arrowstyle": "<->"})
+        if r_major_s < max(s_major_px) * scale / 2:
+            plt.text(r_minor_s, base_e2, "  $d_{minor}$=%.0f %s" % (2*r_minor_s, units_str), va="center", ha="left")
+        else:
+            plt.text(0, 1.1*base_e2, "$d_{minor}$=%.0f %s" % (2*r_minor_s, units_str), va="bottom", ha="center")
+
         plt.text(0, bkgnd + a_minor, "  Gaussian Fit")
         plt.xlabel("Distance from Center [%s]" % units_str)
-        plt.ylabel("Pixel Intensity Along Minor Axis")
+        plt.ylabel("Pixel Value")
         plt.title("Minor Axis")
-        plt.ylim(y_min, y_max)
+        plt.ylim(z_min, z_max)
         plt.xlim(min(s_major_px) * scale, max(s_major_px) * scale)
-        # plt.gca().set_ylim(bottom=0)
+
     else:
         plt.subplot(2, 2, 4)
         plt.text(0.5, 0.5, "Fit failed.", ha="center", va="center")
@@ -666,27 +763,13 @@ def plot_image_montage(
         # plot the image and gather the beam diameters
         _, _, d_major[i], d_minor[i], _ = plot_image_and_fit(im, **options, colorbar=cb)
 
-        # add a title
-        if d_major[i] == 0:
-            s1 = "major fail"
-        elif units == "mm":
-            s1 = "major=%.2f%s" % (d_major[i], units)
-        else:
-            s1 = "major=%.0f%s" % (d_major[i], units)
-
-        if d_minor[i] is None or (isinstance(d_minor[i], float) and np.isnan(d_minor[i])):
-            s2 = "minor fail"
-        elif units == "mm":
-            s2 = "minor=%.2f%s" % (d_minor[i], units)
-        else:
-            s2 = "minor=%.0f%s" % (d_minor[i], units)
-
-        s = "%s, %s" % (s1, s2)
-
+        # add a title using the shared formatter
         if z is None:
-            plt.title(s)
+            title = _format_beam_title(d_major[i], d_minor[i], units=units, z=None)
         else:
-            plt.title("z=%.0fmm, %s" % (z[i] * 1e3, s))
+            title = _format_beam_title(d_major[i], d_minor[i], units=units, z=z[i])
+
+        plt.title(title)
 
         # omit y-labels on all but first column
         if i % cols:
