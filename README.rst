@@ -87,6 +87,8 @@ Quick Start: Determining Beam Size
 
 Example showing how to compute beam center, major/minor axes, and rotation::
 
+.. code-block:: python
+
     import imageio.v3 as iio
     import laserbeamsize as lbs
 
@@ -101,6 +103,8 @@ Example showing how to compute beam center, major/minor axes, and rotation::
     print(f"Rotation:    {phi * 180/3.1416:.0f}° CCW")
 
 To produce an annotated visual report::
+
+.. code-block:: python
 
     lbs.plot_image_analysis(beam)
     plt.show()
@@ -117,6 +121,8 @@ Astigmatic and Non-Gaussian Beams
 The analysis also works for beams that are not well approximated by a Gaussian.  
 For example, a TEM\ :sub:`02`\  mode::
 
+.. code-block:: python
+
     tem02 = imageio.imread("TEM02_100mm.pgm") >> 4  # 12-bit data stored in 16-bit container
     lbs.plot_image_analysis(tem02, title="TEM$_{02}$ at z=100 mm", pixel_size=3.75)
     plt.show()
@@ -132,6 +138,8 @@ M² Determination
 
 Estimating M² requires beam diameters at several locations along the propagation axis.  
 The beam diameters should be measured within ±1 Rayleigh distance and more than ±2+ Rayleigh distances::
+
+.. code-block:: python
 
     lambda1 = 308e-9  # meters
     z1 = np.array([-200,-180,-160,-140,-120,-100,-80,-60,-40,-20,0,20,40,60,80,99,120,140,160,180,200]) * 1e-3
@@ -152,20 +160,30 @@ Example: Non-ISO-Conforming Measurement Set
 The following analysis uses images collected at non-ideal distances but illustrates the fitting process.  
 The beam is a HeNe laser operating predominantly in the TEM\ :sub:`01`\  mode and rotated 38.7°::
 
-    lambda0 = 632.8e-9  # meters
-    z10 = np.array([247, 251, 259, 266, 281, 292]) * 1e-3
+.. code-block:: python
 
-    filenames = ["sb_%.0fmm_10.pgm" % (number * 1e3) for number in z10]
-    tem10 = [imageio.imread(name) >> 4 for name in filenames]
+    lambda0 = 632.8e-9  # meters
+    z = np.array([247, 251, 259, 266, 281, 292]) * 1e-3  # meters
+    filenames = [repo + "sb_%.0fmm_10.pgm" % (number * 1e3) for number in z]
+
+    # the 12-bit pixel images are stored in high-order bits in 16-bit values
+    tem10 = [iio.imread(name) >> 4 for name in filenames]
 
     # remove top to eliminate artifact
-    for i in range(len(z10)):
+    for i in range(len(z)):
         tem10[i] = tem10[i][200:, :]
 
-    fixed_rotation = np.radians(38.7)
-    options = {'pixel_size': 3.75, 'units': "µm", 'crop': [1400, 1400], 'z': z10, 'phi': fixed_rotation}
+    # find beam in all the images rotated -52° and create arrays of beam diameters
+    options = {
+        "pixel_size": 3.75,
+        "units": "µm",
+        "crop": [1400, 1400],
+        "z": z,
+        "phi_fixed": np.radians(-52),
+        "iso_noise": False
+    }
 
-    dy, dx = lbs.beam_size_montage(tem10, **options)
+    d_minor, d_major = lbs.plot_image_montage(tem10, **options)
     plt.show()
 
 Example montage output:
